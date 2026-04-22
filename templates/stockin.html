@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Entry | Admin Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #f1f5f9;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-main);
+            padding-bottom: 5rem;
+            margin: 0;
+        }
+
+        /* Admin Header Styling (Standardized) */
+        .admin-header {
+            background-color: #0c831f;
+            color: white;
+            padding: 0.75rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .header-logo {
+            display: flex; align-items: center; gap: 0.75rem;
+            font-weight: 700; font-size: 1.25rem; color: white; text-decoration: none;
+        }
+        .header-logo i { color: #ffc107; font-size: 1.5rem; }
+        .header-nav { display: flex; gap: 1.5rem; margin-left: 2rem; }
+        .header-nav a {
+            color: rgba(255,255,255,0.8); text-decoration: none;
+            font-size: 0.9rem; font-weight: 500; transition: color 0.2s;
+            padding: 0.5rem 0.25rem;
+        }
+        .header-nav a:hover, .header-nav a.active { 
+            color: white; 
+            border-bottom: 2px solid white;
+        }
+        .header-actions { display: flex; align-items: center; gap: 1.25rem; }
+        .notification-btn {
+            color: white; font-size: 1.25rem; position: relative; 
+            display: flex; align-items: center; gap: 0.5rem; text-decoration: none;
+            transition: transform 0.2s;
+        }
+        .notification-btn:hover { transform: scale(1.05); color: white; }
+        
+        .low-stock-alert {
+            background-color: #ef4444; color: white; font-size: 0.7rem; font-weight: 700;
+            padding: 0.15rem 0.6rem; border-radius: 50px; display: flex; align-items: center; gap: 0.3rem;
+            animation: alertPulse 2s infinite; box-shadow: 0 0 0 rgba(239, 68, 68, 0.4);
+        }
+        
+        @keyframes alertPulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .logout-btn {
+            background-color: #ef4444; color: white; border: none;
+            padding: 0.4rem 1.25rem; border-radius: 6px; font-weight: 600;
+            font-size: 0.85rem; text-decoration: none; transition: background-color 0.2s;
+        }
+        .logout-btn:hover { background-color: #dc2626; color: white; }
+
+        .page-header {
+            background: white;
+            padding: 2.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 2.5rem;
+        }
+
+        .card {
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
+
+        .form-label {
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .form-control, .form-select {
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            background-color: #fcfdfe;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+            background-color: white;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            border: none;
+            padding: 0.85rem 2rem;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+        }
+
+        .product-preview-card {
+            position: sticky;
+            top: 6rem;
+            min-height: 480px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* Animation Styles */
+        @keyframes float {
+            0% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(2deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
+        }
+
+        @keyframes pulse-shadow {
+            0% { filter: drop-shadow(0 0 0 rgba(59, 130, 246, 0)); }
+            50% { filter: drop-shadow(0 10px 20px rgba(59, 130, 246, 0.15)); }
+            100% { filter: drop-shadow(0 0 0 rgba(59, 130, 246, 0)); }
+        }
+
+        .animated-box {
+            animation: float 4s ease-in-out infinite, pulse-shadow 4s ease-in-out infinite;
+            color: #cbd5e1;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .product-img-wrapper {
+            width: 100%;
+            height: 220px;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #f8fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .product-img-wrapper img {
+            max-width: 85%;
+            max-height: 85%;
+            object-fit: contain;
+            transition: transform 0.3s;
+        }
+        .product-img-wrapper:hover img { transform: scale(1.05); }
+
+        .current-stock-badge {
+            background: #eff6ff;
+            color: #3b82f6;
+            padding: 0.5rem 1.25rem;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        /* Table Styling */
+        .table-card {
+            margin-top: 3rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .history-table th {
+            background: #f8fafc;
+            color: #64748b;
+            text-transform: uppercase;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 1rem 1.5rem;
+            letter-spacing: 0.05em;
+        }
+
+        .history-table td {
+            padding: 1.25rem 1.5rem;
+            font-size: 0.85rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .amount-text {
+            font-weight: 700;
+            color: #10b981;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Admin Header (Standardized) -->
+    <header class="admin-header">
+        <div class="d-flex align-items-center">
+            <a href="/" class="header-logo">
+                <i class="bi bi-shop"></i>
+                <span>FRESHMART ADMIN</span>
+            </a>
+            <nav class="header-nav">
+                <a href="/viewproduct">Dashboard</a>
+                <a href="/category">Categories</a>
+                <a href="/add_product_page">Products</a>
+                <a href="/my_orders">Orders</a>
+                <a href="/transactions">Financials</a>
+                <a href="/stockin_page" class="active">Stock In</a>
+                <a href="/reports">Reports</a>
+            </nav>
+        </div>
+        <div class="header-actions">
+            {% if low_stock_count > 0 %}
+            <a href="/stockin_page" class="notification-btn" title="Low Stock Alerts">
+                <i class="bi bi-bell-fill text-warning"></i>
+                <div class="low-stock-alert">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span>{{ low_stock_count }} Low</span>
+                </div>
+            </a>
+            {% else %}
+            <div class="notification-btn opacity-50" title="No Stock Alerts">
+                <i class="bi bi-bell"></i>
+            </div>
+            {% endif %}
+            <a href="/logout" class="logout-btn">Logout</a>
+        </div>
+    </header>
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-1">
+                        <li class="breadcrumb-item"><a href="/viewproduct" class="text-decoration-none">Dashboard</a></li>
+                        <li class="breadcrumb-item active text-slate-500">Stock Entry</li>
+                    </ol>
+                </nav>
+                <h1 class="h2 fw-bold mb-0 text-slate-900">Stock Entry</h1>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="row g-4">
+            <!-- Left Side: Form -->
+            <div class="col-lg-8">
+                <div class="card p-4 p-md-5">
+                    <h4 class="fw-bold mb-4 text-primary"><i class="bi bi-plus-circle-fill me-2"></i>New Stock Arrival</h4>
+                    
+                    <form action="/save_stockin" method="POST">
+                        <div class="row g-3">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Search Product</label>
+                                <select name="product_id" id="product_selector" class="form-select" required onchange="fetchProductDetails(this.value)">
+                                    <option value="" disabled selected>Select a product to restock...</option>
+                                    {% for p in products %}
+                                    <option value="{{ p.id }}">{{ p.product_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Supplier Name</label>
+                                <input type="text" name="supplier_name" class="form-control" placeholder="Who sent this stock?" required>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Quantity Received</label>
+                                <input type="number" name="quantity" id="qty" class="form-control" placeholder="0" required min="1" oninput="calculateTotal()">
+                            </div>
+
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Supplier Address</label>
+                                <textarea name="supplier_address" class="form-control" rows="2" placeholder="Full address of the supplier..." required></textarea>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Unit Price (Purchase Cost)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0">₹</span>
+                                    <input type="number" step="0.01" name="price" id="price" class="form-control border-start-0" placeholder="0.00" required min="0" oninput="calculateTotal()">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Total Investment</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0">₹</span>
+                                    <input type="text" id="total" class="form-control border-start-0 fw-bold text-primary" readonly value="0.00">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary w-100 py-3 shadow">
+                                <i class="bi bi-file-earmark-check-fill me-2"></i>Confirm and Update Inventory
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card p-4 product-preview-card text-center" id="preview_card">
+                    <div id="no_selection">
+                        <div class="p-5 text-muted">
+                            <svg class="animated-box mb-4" width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+                                <path d="m3.3 7 8.7 5 8.7-5"/>
+                                <path d="M12 22V12"/>
+                            </svg>
+                            <p class="small fw-semibold mt-3 text-slate-400">Select a product to see live preview and current stock levels.</p>
+                        </div>
+                    </div>
+                    
+                    <div id="product_info" class="fade-in" style="display: none;">
+                        <h5 class="fw-bold mb-3 text-slate-800" id="preview_name">Product Name</h5>
+                        <div class="product-img-wrapper">
+                            <img id="preview_img" src="/static/uploads/default.jpg" alt="Product">
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center bg-slate-50 p-3 rounded-4 mb-3 border border-slate-100">
+                            <span class="text-muted small fw-bold text-uppercase" style="letter-spacing: 0.05em;">Current Stock</span>
+                            <span class="current-stock-badge" id="preview_qty">0</span>
+                        </div>
+                        <div class="text-start space-y-2">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted small">Category</span>
+                                <span class="text-dark fw-bold small" id="preview_category">-</span>
+                            </div>
+                            <div class="d-flex justify-content-between border-top pt-2">
+                                <span class="text-muted small">Selling Price</span>
+                                <span class="text-dark fw-bold small">₹<span id="preview_price">0.00</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stock History Table -->
+        <div class="card table-card overflow-hidden">
+            <div class="card-header bg-white p-4 border-0 d-flex justify-content-between align-items-center">
+                <h4 class="fw-bold mb-0">Recent Stock Entries</h4>
+                <button class="btn btn-sm btn-light rounded-pill" onclick="loadHistory()">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table history-table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Product</th>
+                            <th>Supplier</th>
+                            <th>Qty</th>
+                            <th>Unit Price</th>
+                            <th>Total</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history_body">
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted">Loading history...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function calculateTotal() {
+            const qty = document.getElementById('qty').value || 0;
+            const price = document.getElementById('price').value || 0;
+            const total = (qty * price).toFixed(2);
+            document.getElementById('total').value = total;
+        }
+
+        async function fetchProductDetails(id) {
+            if (!id) return;
+            
+            try {
+                const response = await fetch(`/api/product/${id}`);
+                const product = await response.json();
+                
+                if (product.error) return;
+
+                const productInfo = document.getElementById('product_info');
+                document.getElementById('no_selection').style.display = 'none';
+                productInfo.style.display = 'block';
+                
+                // Re-trigger fade-in animation
+                productInfo.classList.remove('fade-in');
+                void productInfo.offsetWidth; // trigger reflow
+                productInfo.classList.add('fade-in');
+                
+                document.getElementById('preview_name').innerText = product.product_name;
+                document.getElementById('preview_qty').innerText = product.quantity;
+                document.getElementById('preview_category').innerText = product.category;
+                document.getElementById('preview_price').innerText = parseFloat(product.price).toFixed(2);
+                
+                if (product.image) {
+                    document.getElementById('preview_img').src = `/static/uploads/${product.image}`;
+                } else {
+                    document.getElementById('preview_img').src = '/static/uploads/default.jpg';
+                }
+            } catch (error) {
+                console.error("Error fetching product details:", error);
+            }
+        }
+
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/recent_stockin');
+                const stocks = await response.json();
+                
+                const tbody = document.getElementById('history_body');
+                tbody.innerHTML = '';
+                
+                if (stocks.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">No stock entries found.</td></tr>';
+                    return;
+                }
+
+                stocks.forEach(s => {
+                    const row = `
+                        <tr>
+                            <td class="text-muted fw-semibold">#${s.id}</td>
+                            <td><span class="fw-bold">${s.product_name || 'N/A'}</span></td>
+                            <td>
+                                <div class="fw-medium">${s.supplier_name}</div>
+                                <div class="text-muted small">${s.date_added || ''}</div>
+                            </td>
+                            <td><span class="badge bg-light text-dark fw-bold px-3 py-2 rounded-pill">${s.quantity}</span></td>
+                            <td>₹${parseFloat(s.price).toFixed(2)}</td>
+                            <td><span class="amount-text">₹${parseFloat(s.total_amount).toFixed(2)}</span></td>
+                            <td><span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1">Completed</span></td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            } catch (error) {
+                console.error("Error loading history:", error);
+                document.getElementById('history_body').innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Failed to load history.</td></tr>';
+            }
+        }
+
+        // Initialize history on load
+        loadHistory();
+    </script>
+</body>
+</html>

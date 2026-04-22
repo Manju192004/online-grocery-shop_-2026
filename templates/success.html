@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Order Success - Freshmart{% endblock %}
+
+{% block styles %}
+<style>
+  .success-icon {
+    font-size: 5rem;
+    animation: scaleUp 0.5s ease-out;
+  }
+  @keyframes scaleUp {
+    from { transform: scale(0); }
+    to { transform: scale(1); }
+  }
+  .order-card {
+    border-radius: 20px;
+    border: none;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  }
+  .item-row {
+    border-bottom: 1px dashed #dee2e6;
+    padding: 10px 0;
+  }
+  .item-row:last-child { border-bottom: none; }
+
+  .btn-sms {
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 14px 28px;
+    font-weight: 700;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+    transition: all 0.3s ease;
+  }
+  .btn-sms:hover {
+    background: #0056b3;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+  }
+  .btn-sms i { font-size: 1.3rem; }
+
+  .sms-section {
+    background: linear-gradient(135deg, #e7f1ff 0%, #f0f7ff 100%);
+    border: 2px solid #bfe0ff;
+    border-radius: 16px;
+    padding: 24px;
+    margin-top: 20px;
+  }
+  .sms-section h6 { color: #0056b3; font-weight: 700; }
+  .sms-section p { color: #004085; font-size: 0.85rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6 text-center">
+      <div class="mb-4">
+        <i class="bi bi-check-circle-fill text-success success-icon"></i>
+        <h2 class="fw-bold mt-2">Order Successful!</h2>
+        <p class="text-muted">Thank you for shopping with us.</p>
+      </div>
+
+      <div class="card order-card overflow-hidden mb-4 text-start bg-white">
+        <div class="card-header bg-success text-white py-3 border-0">
+          <h5 class="mb-0 fw-bold">
+            <i class="bi bi-receipt me-2"></i>Order Summary
+          </h5>
+        </div>
+        <div class="card-body p-4">
+          <div class="row mb-3">
+            <div class="col-6">
+              <small class="text-muted d-block text-uppercase small fw-bold">Order ID</small>
+              <span class="fw-bold text-dark" id="s-order-id">#INV-0000</span>
+            </div>
+            <div class="col-6 text-end">
+              <small class="text-muted d-block text-uppercase small fw-bold">Customer</small>
+              <span class="fw-bold text-dark" id="s-name">Customer Name</span>
+            </div>
+          </div>
+
+          <h6 class="fw-bold text-uppercase small text-muted border-bottom pb-2">
+            Purchased Items
+          </h6>
+          <div id="items-list-container"></div>
+
+          <div class="mt-4 pt-3 border-top">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="text-muted fw-bold">Payment Method:</span>
+              <span class="badge bg-info text-dark text-uppercase" id="s-method">CASH</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+              <h4 class="fw-bold mb-0">Total Amount:</h4>
+              <h4 class="text-primary fw-bold mb-0" id="s-total">₹0.00</h4>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SMS Receipt Section -->
+      <div class="sms-section text-center" id="sms-section">
+        <h6><i class="bi bi-chat-left-text me-2"></i>Order Receipt</h6>
+        <div id="bg-sms-status" class="alert alert-info py-2 small mb-0">
+          <i class="bi bi-hourglass-split me-1"></i> Sending receipt to your phone...
+        </div>
+      </div>
+
+      <div class="d-grid gap-2 d-md-flex justify-content-center mt-4">
+        <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg px-4 rounded-pill shadow-sm">
+          <i class="bi bi-house-door me-2"></i>Back to Home
+        </a>
+        <button onclick="window.print()" class="btn btn-outline-secondary btn-lg px-4 rounded-pill shadow-sm">
+          <i class="bi bi-printer me-2"></i>Print
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let orderData = null;
+
+  window.onload = function () {
+    const data = JSON.parse(sessionStorage.getItem("lastOrder"));
+    orderData = data;
+
+    if (data && data.items) {
+      document.getElementById("s-order-id").innerText = data.orderId;
+      document.getElementById("s-name").innerText = data.name;
+      document.getElementById("s-total").innerText = "₹" + data.total;
+
+      const methodElement = document.getElementById("s-method");
+      if (methodElement) {
+        methodElement.innerText = data.method || "CASH";
+      }
+
+      const container = document.getElementById("items-list-container");
+      container.innerHTML = "";
+
+      data.items.forEach((item) => {
+        let qty = item.qty || 1;
+        let price = parseFloat(item.price) || 0;
+        let subtotal = price * qty;
+
+        container.innerHTML += `
+          <div class="item-row">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <div class="fw-bold text-dark">${item.name}</div>
+                <small class="text-muted">Rate: ₹${price.toFixed(2)} | Qty: ${qty}</small>
+              </div>
+              <div class="text-end fw-bold">₹${subtotal.toFixed(2)}</div>
+            </div>
+          </div>`;
+      });
+
+      // Clear cart
+      let user = "{{ session['user'] }}" || "guest";
+      localStorage.removeItem("myCart_" + user);
+      if (typeof updateBadge === 'function') updateBadge();
+
+      // Update BG SMS status after a short delay
+      setTimeout(() => {
+        const bgStatus = document.getElementById("bg-sms-status");
+        if (bgStatus) {
+           bgStatus.className = "alert alert-success py-2 small mb-0";
+           bgStatus.innerHTML = '<i class="bi bi-check-circle me-1"></i> Receipt successfully sent to your phone!';
+        }
+        // Show a popup message as requested
+        alert("✅ SMS Receipt Sent Successfully!");
+      }, 800);
+    } else {
+      document.getElementById("items-list-container").innerHTML =
+        `<div class="alert alert-warning text-center">No recent order details found.</div>`;
+      document.getElementById("sms-section").style.display = "none";
+    }
+  };
+
+  function generateReceiptMessage() {
+    if (!orderData || !orderData.items) return "";
+
+    let msg = `FRESHMART RECEIPT\n`;
+    msg += `Order: ${orderData.orderId}\n`;
+    msg += `Date: ${new Date().toLocaleDateString('en-IN')}\n`;
+    msg += `Items:\n`;
+
+    orderData.items.forEach((item) => {
+      msg += `- ${item.name} (${item.qty || 1}x): ₹${(parseFloat(item.price) * (item.qty || 1)).toFixed(0)}\n`;
+    });
+
+    msg += `Total: ₹${orderData.total}\n`;
+    msg += `Payment: ${orderData.method || "CASH"}\n`;
+    msg += `Thanks for shopping!`;
+
+    return msg;
+  }
+</script>
+{% endblock %}

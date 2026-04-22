@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Transaction Financials | Freshmart Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0c831f; /* Keep Freshmart Green */
+      --secondary: #2563eb;
+      --accent: #f59e0b;
+      --bg: #fdfdfd;
+      --card-bg: #ffffff;
+      --nav-bg: #1a1a1a; /* Dark navbar like the image */
+    }
+
+    body {
+      background-color: var(--bg);
+      font-family: 'Outfit', sans-serif;
+      color: #1e293b;
+    }
+
+    /* Premium Navbar Styling (Standardized) */
+    .admin-header {
+      background-color: #0c831f;
+      color: white;
+      padding: 0.75rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .header-logo {
+      display: flex; align-items: center; gap: 0.75rem;
+      font-weight: 700; font-size: 1.25rem; color: white; text-decoration: none;
+    }
+    .header-logo i { color: #ffc107; font-size: 1.5rem; }
+    .header-nav { display: flex; gap: 1.5rem; margin-left: 2rem; }
+    .header-nav a {
+      color: rgba(255,255,255,0.8); text-decoration: none;
+      font-size: 0.9rem; font-weight: 500; transition: color 0.2s;
+      padding: 0.5rem 0.25rem;
+    }
+    .header-nav a:hover, .header-nav a.active { 
+      color: white; 
+      border-bottom: 2px solid white;
+    }
+    .header-actions { display: flex; align-items: center; gap: 1.25rem; }
+    .notification-btn {
+      color: white; font-size: 1.25rem; position: relative; 
+      display: flex; align-items: center; gap: 0.5rem; text-decoration: none;
+      transition: transform 0.2s;
+    }
+    .notification-btn:hover { transform: scale(1.05); color: white; }
+    
+    .low-stock-alert {
+      background-color: #ef4444; color: white; font-size: 0.7rem; font-weight: 700;
+      padding: 0.15rem 0.6rem; border-radius: 50px; display: flex; align-items: center; gap: 0.3rem;
+      animation: alertPulse 2s infinite; box-shadow: 0 0 0 rgba(239, 68, 68, 0.4);
+    }
+    
+    @keyframes alertPulse {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+
+    .logout-btn {
+      background-color: #ef4444; color: white; border: none;
+      padding: 0.4rem 1.25rem; border-radius: 6px; font-weight: 600;
+      font-size: 0.85rem; text-decoration: none; transition: background-color 0.2s;
+    }
+    .logout-btn:hover { background-color: #dc2626; color: white; }
+
+    .main-container { padding: 3rem 6rem; }
+    
+    .finance-header {
+      margin-bottom: 3.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .title-group h1 { 
+      font-weight: 700; font-size: 2.25rem; color: #334155; margin-bottom: 0.5rem;
+      border-bottom: 4px solid #0c831f; display: inline-block; padding-bottom: 5px;
+    }
+    .title-group p { color: #94a3b8; font-size: 1.05rem; }
+
+    .back-btn {
+      background: white; border: 1px solid #0c831f; color: #0c831f;
+      padding: 0.5rem 1.25rem; border-radius: 4px; font-size: 0.85rem;
+      text-decoration: none; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .back-btn:hover { background: #0c831f; color: white; }
+
+    /* Transaction Table */
+    .table-container {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+      border: 1px solid #f1f5f9;
+    }
+    .finance-table { margin-bottom: 0; }
+    .finance-table thead th {
+      background-color: #f8fafc;
+      color: #64748b;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 1.25rem 1.5rem;
+      border-bottom: 2px solid #e5e7eb;
+      font-size: 0.8rem;
+    }
+
+    .finance-table tbody td {
+      padding: 1.1rem 1.5rem;
+      vertical-align: middle;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 0.92rem;
+      color: #475569;
+    }
+    .finance-table tbody tr:last-child td { border-bottom: none; }
+    .finance-table tbody tr:hover { background-color: #fcfcfc; }
+
+    .order-id { font-weight: 600; color: #1e293b; }
+    .total-price { font-weight: 700; color: #0c831f; }
+    .actual-amount { font-weight: 700; color: #1e293b; font-size: 1.05rem; }
+
+    /* Badges */
+    .badge-payment {
+      padding: 0.5rem 1.2rem;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: capitalize;
+    }
+    .bg-razorpay { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+    .bg-upi { background-color: #2563eb; color: white; }
+    .bg-cod { background-color: #64748b; color: white; }
+
+    /* Tax styles */
+    .tax-col { color: #94a3b8; font-style: italic; }
+
+    @media (max-width: 1200px) {
+      .main-container { padding: 2rem 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="admin-header">
+    <div class="d-flex align-items-center">
+      <a href="/" class="header-logo">
+        <i class="bi bi-shop"></i>
+        <span>FRESHMART ADMIN</span>
+      </a>
+      <nav class="header-nav">
+        <a href="/viewproduct">Dashboard</a>
+        <a href="/category">Categories</a>
+        <a href="/add_product_page">Products</a>
+        <a href="/my_orders">Orders</a>
+        <a href="/transactions" class="active">Financials</a>
+        <a href="/stockin_page">Stock In</a>
+        <a href="/reports">Reports</a>
+      </nav>
+    </div>
+    <div class="header-actions">
+      {% if low_stock_count > 0 %}
+      <a href="/stockin_page" class="notification-btn" title="Low Stock Alerts">
+        <i class="bi bi-bell-fill text-warning"></i>
+        <div class="low-stock-alert">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <span>{{ low_stock_count }} Low</span>
+        </div>
+      </a>
+      {% else %}
+      <div class="notification-btn opacity-50" title="No Stock Alerts">
+        <i class="bi bi-bell"></i>
+      </div>
+      {% endif %}
+      <a href="/logout" class="logout-btn">Logout</a>
+    </div>
+  </header>
+
+
+
+  <main class="main-container">
+    <div class="finance-header">
+      <div class="title-group">
+        <h1>Transaction Financials</h1>
+        <p>Revenue breakdown with GST (18%) and Tax (2%)</p>
+      </div>
+      <a href="/viewproduct" class="back-btn">Back to Dashboard</a>
+    </div>
+
+    <div class="table-container">
+      <div class="table-responsive">
+        <table class="table finance-table">
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Customer Name</th>
+              <th>Payment Mode</th>
+              <th>Grand Total</th>
+              <th>GST (18%)</th>
+              <th>Tax (2%)</th>
+              <th>Actual Amount</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set summary = namespace(total=0, gst=0, tax=0, actual=0) %}
+            {% for order in orders %}
+            {% set total = order.total_price | float %}
+            {% set gst = total * 0.18 %}
+            {% set tax = total * 0.02 %}
+            {% set actual = total - gst - tax %}
+            
+            {% set summary.total = summary.total + total %}
+            {% set summary.gst = summary.gst + gst %}
+            {% set summary.tax = summary.tax + tax %}
+            {% set summary.actual = summary.actual + actual %}
+
+            <tr>
+              <td><span class="order-id">#{{ order.id }}</span></td>
+              <td>{{ order.customer_name or 'N/A' }}</td>
+              <td>
+                {% if 'razorpay' in (order.payment_method | lower) %}
+                <span class="badge badge-payment bg-razorpay">Razorpay Online</span>
+                {% elif 'upi' in (order.payment_method | lower) %}
+                <span class="badge badge-payment bg-upi">UPI</span>
+                {% else %}
+                <span class="badge badge-payment bg-cod">{{ order.payment_method or 'COD' }}</span>
+                {% endif %}
+              </td>
+              <td><span class="total-price">₹{{ "{:,.2f}".format(total) }}</span></td>
+              <td class="tax-col">₹{{ "{:,.2f}".format(gst) }}</td>
+              <td class="tax-col">₹{{ "{:,.2f}".format(tax) }}</td>
+              <td><span class="actual-amount">₹{{ "{:,.2f}".format(actual) }}</span></td>
+              <td class="small">{{ order.order_date }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot class="table-light">
+            <tr class="fw-bold border-top-2">
+              <td colspan="3" class="text-center py-3" style="font-size: 1.1rem;">Total Summary:</td>
+              <td class="total-price">₹{{ "{:,.2f}".format(summary.total) }}</td>
+              <td class="tax-col">₹{{ "{:,.2f}".format(summary.gst) }}</td>
+              <td class="tax-col">₹{{ "{:,.2f}".format(summary.tax) }}</td>
+              <td><span class="actual-amount text-success" style="font-size: 1.2rem;">₹{{ "{:,.2f}".format(summary.actual) }}</span></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

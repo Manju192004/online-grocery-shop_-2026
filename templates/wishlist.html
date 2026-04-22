@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}My Wishlist - Freshmart{% endblock %}
+
+{% block styles %}
+<style>
+    :root {
+        --brand-green: #0c831f;
+        --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    .wishlist-header {
+        background: linear-gradient(135deg, #fff5f5 0%, #fff0f0 100%);
+        padding: 40px 20px;
+        border-radius: 20px;
+        text-align: center;
+        margin-bottom: 40px;
+        border: 1px solid #fee2e2;
+    }
+
+    .wishlist-header h2 {
+        color: #dc2626;
+        font-weight: 800;
+    }
+
+    /* Product Card Styling (reused from index) */
+    .product-col {
+        perspective: 1000px;
+    }
+
+    .neat-card {
+        background: white;
+        border-radius: 20px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        cursor: pointer;
+        transform-style: preserve-3d;
+    }
+
+    .neat-card:hover {
+        transform: translateY(-10px) rotateX(4deg) rotateY(4deg) scale(1.02);
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.12);
+        border-color: var(--brand-green);
+    }
+
+    .card-img-wrapper {
+        background: #fdfdfd;
+        height: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 25px;
+        transition: background 0.3s;
+    }
+
+    .neat-card:hover .card-img-wrapper {
+        background: #f0fdf4;
+    }
+
+    .prod-img {
+        max-height: 100%;
+        max-width: 100%;
+        object-fit: contain;
+        transition: transform 0.5s;
+        filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.05));
+    }
+
+    .neat-card:hover .prod-img {
+        transform: translateZ(20px) scale(1.1);
+    }
+
+    .card-content {
+        padding: 20px;
+        text-align: center;
+        flex-grow: 1;
+        background: white;
+    }
+
+    .prod-name {
+        font-weight: 700;
+        color: #1e293b;
+        margin-top: 10px;
+    }
+
+    .prod-price {
+        color: var(--brand-green);
+        font-size: 1.3rem;
+        font-weight: 800;
+        margin: 8px 0;
+    }
+
+    .empty-wishlist {
+        padding: 100px 20px;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="wishlist-header">
+        <h2><i class="bi bi-heart-fill me-2"></i>My Wishlist</h2>
+        <p class="text-muted fw-500">Your favorite items saved for later</p>
+    </div>
+
+    {% if products %}
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4" id="wishlistGrid">
+        {% for product in products %}
+        <div class="col product-col">
+            <div class="neat-card" onclick="window.location.href='/product/{{ product.id }}'">
+                <div class="card-img-wrapper position-relative">
+                    {% if product.original_price and product.original_price|float > product.price|float %}
+                    {% set discount = ((product.original_price|float - product.price|float) /
+                    product.original_price|float * 100)|round|int %}
+                    <span class="badge bg-danger position-absolute top-0 start-0 m-2"
+                        style="border-radius: 4px; z-index: 2;">{{ discount }}% OFF</span>
+                    {% endif %}
+
+                    <!-- Remove from Wishlist -->
+                    <a href="{{ url_for('remove_from_wishlist', pid=product.id) }}"
+                        class="btn btn-danger btn-sm rounded-circle position-absolute top-0 end-0 m-2 shadow-sm"
+                        onclick="event.stopPropagation();"
+                        style="z-index: 2; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+
+                    <img src="/static/uploads/{{ product.image }}" class="prod-img" alt="{{ product.product_name }}" />
+                </div>
+                <div class="card-content text-start">
+                    <h6 class="prod-name text-truncate text-dark">{{ product.product_name }}</h6>
+                    <div class="small text-muted mb-2">Qty: {{ product.quantity }}</div>
+                    <div class="prod-price d-flex align-items-center gap-2">
+                        {% if product.original_price and product.original_price|float > product.price|float %}
+                        <del class="text-dark fs-6" style="opacity: 0.7;">₹{{ product.original_price }}</del>
+                        {% endif %}
+                        <span class="text-danger fw-bold fs-5">₹{{ product.price }}</span>
+                    </div>
+                    <div class="mt-2 d-flex gap-2">
+                        <button class="btn btn-success flex-grow-1 fw-bold"
+                            onclick="event.stopPropagation(); addToCart('{{ product.id }}', '{{ product.product_name }}', '{{ product.price }}', '{{ product.image }}')">Add
+                            to Cart</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-wishlist">
+        <i class="bi bi-heart text-muted opacity-25" style="font-size: 5rem;"></i>
+        <h3 class="mt-4 fw-bold">Your wishlist is empty</h3>
+        <p class="text-muted mb-4">Seems like you haven't added anything yet.</p>
+        <a href="{{ url_for('index') }}" class="btn btn-success rounded-pill px-5 fw-bold">Start Shopping</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function addToCart(pid, name, price, img) {
+        let user = "{{ session['user'] }}" || "guest";
+        let cartKey = "myCart_" + user;
+        let cart = JSON.parse(localStorage.getItem(cartKey)) || [];
+        cart.push({ id: pid, name: name, price: price, img: img, qty: 1 });
+        localStorage.setItem(cartKey, JSON.stringify(cart));
+        if (typeof updateBadge === 'function') updateBadge();
+        showToast(name + " added to cart!");
+    }
+</script>
+{% endblock %}

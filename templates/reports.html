@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Business Analytics | Freshmart Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --primary: #0c831f;
+      --secondary: #2563eb;
+      --accent: #f59e0b;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+    }
+
+    body {
+      background-color: var(--bg);
+      font-family: 'Outfit', sans-serif;
+      color: #1e293b;
+    }
+
+    /* Admin Navbar */
+    /* Premium Navbar Styling (Standardized) */
+    .admin-header {
+      background-color: #0c831f;
+      color: white;
+      padding: 0.75rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .header-logo {
+      display: flex; align-items: center; gap: 0.75rem;
+      font-weight: 700; font-size: 1.25rem; color: white; text-decoration: none;
+    }
+    .header-logo i { color: #ffc107; font-size: 1.5rem; }
+    .header-nav { display: flex; gap: 1.5rem; margin-left: 2rem; }
+    .header-nav a {
+      color: rgba(255,255,255,0.8); text-decoration: none;
+      font-size: 0.9rem; font-weight: 500; transition: color 0.2s;
+      padding: 0.5rem 0.25rem;
+    }
+    .header-nav a:hover, .header-nav a.active { 
+      color: white; 
+      border-bottom: 2px solid white;
+    }
+    .header-actions { display: flex; align-items: center; gap: 1.25rem; }
+    .notification-btn {
+      color: white; font-size: 1.25rem; position: relative; 
+      display: flex; align-items: center; gap: 0.5rem; text-decoration: none;
+      transition: transform 0.2s;
+    }
+    .notification-btn:hover { transform: scale(1.05); color: white; }
+    
+    .low-stock-alert {
+      background-color: #ef4444; color: white; font-size: 0.7rem; font-weight: 700;
+      padding: 0.15rem 0.6rem; border-radius: 50px; display: flex; align-items: center; gap: 0.3rem;
+      animation: alertPulse 2s infinite; box-shadow: 0 0 0 rgba(239, 68, 68, 0.4);
+    }
+    
+    @keyframes alertPulse {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+
+    .logout-btn {
+      background-color: #ef4444; color: white; border: none;
+      padding: 0.4rem 1.25rem; border-radius: 6px; font-weight: 600;
+      font-size: 0.85rem; text-decoration: none; transition: background-color 0.2s;
+    }
+    .logout-btn:hover { background-color: #dc2626; color: white; }
+
+    .dashboard-container { padding: 2rem 3rem; }
+    
+    .view-title { font-weight: 700; margin-bottom: 0.5rem; color: #0f172a; }
+    .view-subtitle { color: #64748b; margin-bottom: 2rem; }
+
+    /* Stat Cards */
+    .stat-card {
+      border: none;
+      border-radius: 16px;
+      padding: 1.5rem;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    .stat-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+    .stat-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; margin-bottom: 1rem;
+    }
+    .stat-value { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .stat-label { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.025em; color: #64748b; }
+
+    /* Custom Gradients */
+    .bg-users { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); color: #1d4ed8; }
+    .bg-products { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); color: #15803d; }
+    .bg-categories { background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%); color: #0e7490; }
+    .bg-daily { background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%); color: #b45309; }
+    .bg-monthly { background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); color: #6d28d9; }
+    .bg-lowstock { background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%); color: #dc2626; }
+    .bg-orders { background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); color: #0369a1; }
+    .bg-pending { background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); color: #c2410c; }
+    .bg-suppliers { background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%); color: #0f766e; }
+
+    .icon-users { background: #3b82f6; color: white; }
+    .icon-products { background: #22c55e; color: white; }
+    .icon-categories { background: #06b6d4; color: white; }
+    .icon-daily { background: #f59e0b; color: white; }
+    .icon-monthly { background: #8b5cf6; color: white; }
+    .icon-lowstock { background: #ef4444; color: white; }
+    .icon-orders { background: #0284c7; color: white; }
+    .icon-pending { background: #ea580c; color: white; }
+    .icon-suppliers { background: #14b8a6; color: white; }
+
+    /* Visual Sections */
+    .content-card {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 2rem;
+      height: 100%;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    .card-title { font-weight: 700; font-size: 1.1rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
+
+    /* Table Styling */
+    .custom-table thead th {
+      background: #f8fafc;
+      border-top: none;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+      padding: 1rem;
+    }
+    .custom-table tbody td { padding: 1rem; vertical-align: middle; border-bottom: 1px solid #f1f5f9; }
+    .custom-table tbody tr:hover { background-color: #f8fafc; }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-in { animation: fadeIn 0.5s ease-out forwards; }
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.2s; }
+    .delay-3 { animation-delay: 0.3s; }
+  </style>
+</head>
+<body>
+
+  <header class="admin-header">
+    <div class="d-flex align-items-center">
+      <a href="/" class="header-logo">
+        <i class="bi bi-shop"></i>
+        <span>FRESHMART ADMIN</span>
+      </a>
+      <nav class="header-nav">
+        <a href="/viewproduct">Dashboard</a>
+        <a href="/category">Categories</a>
+        <a href="/add_product_page">Products</a>
+        <a href="/my_orders">Orders</a>
+        <a href="/transactions">Financials</a>
+        <a href="/stockin_page">Stock In</a>
+        <a href="/reports" class="active">Reports</a>
+      </nav>
+    </div>
+    <div class="header-actions">
+      {% if low_stock_count > 0 %}
+      <a href="/stockin_page" class="notification-btn" title="Low Stock Alerts">
+        <i class="bi bi-bell-fill text-warning"></i>
+        <div class="low-stock-alert">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <span>{{ low_stock_count }} Low</span>
+        </div>
+      </a>
+      {% else %}
+      <div class="notification-btn opacity-50" title="No Stock Alerts">
+        <i class="bi bi-bell"></i>
+      </div>
+      {% endif %}
+      <a href="/logout" class="logout-btn">Logout</a>
+    </div>
+  </header>
+
+  <main class="dashboard-container">
+    <div class="mb-4">
+      <h1 class="view-title">📈 Business Analytics</h1>
+      <p class="view-subtitle">Real-time performance metrics and sales intelligence</p>
+    </div>
+
+    <!-- Summary Row 1 -->
+    <div class="row g-3 mb-3">
+      <div class="col-6 col-md-4 col-lg animate-in">
+        <div class="stat-card bg-users h-100">
+          <div class="stat-icon icon-users"><i class="bi bi-people-fill"></i></div>
+          <div class="stat-value">{{ total_users }}</div>
+          <div class="stat-label">Total Users</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4 col-lg animate-in delay-1">
+        <div class="stat-card bg-products h-100">
+          <div class="stat-icon icon-products"><i class="bi bi-box-seam-fill"></i></div>
+          <div class="stat-value">{{ total_products }}</div>
+          <div class="stat-label">Total Products</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4 col-lg animate-in delay-2">
+        <div class="stat-card bg-categories h-100">
+          <div class="stat-icon icon-categories"><i class="bi bi-tags-fill"></i></div>
+          <div class="stat-value">{{ total_categories }}</div>
+          <div class="stat-label">Total Categories</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4 col-lg animate-in delay-2">
+        <div class="stat-card bg-suppliers h-100">
+          <div class="stat-icon icon-suppliers"><i class="bi bi-truck"></i></div>
+          <div class="stat-value">{{ total_suppliers }}</div>
+          <div class="stat-label">Total Suppliers</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4 col-lg animate-in delay-3">
+        <div class="stat-card bg-lowstock h-100" style="{{ 'border: 2px solid #fca5a5;' if low_stock_count_val > 0 else '' }}">
+          <div class="stat-icon icon-lowstock"><i class="bi bi-exclamation-triangle-fill"></i></div>
+          <div class="stat-value">{{ low_stock_count_val }}</div>
+          <div class="stat-label">Low Stock</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary Row 2 -->
+    <div class="row g-3 mb-5">
+      <div class="col-6 col-md-3 animate-in delay-1">
+        <div class="stat-card bg-orders h-100">
+          <div class="stat-icon icon-orders"><i class="bi bi-bag-fill"></i></div>
+          <div class="stat-value">{{ total_orders }}</div>
+          <div class="stat-label">Total Orders</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3 animate-in delay-2">
+        <div class="stat-card bg-pending h-100">
+          <div class="stat-icon icon-pending"><i class="bi bi-clock-fill"></i></div>
+          <div class="stat-value">{{ pending_orders }}</div>
+          <div class="stat-label">Pending Orders</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3 animate-in delay-3">
+        <div class="stat-card bg-daily h-100">
+          <div class="stat-icon icon-daily"><i class="bi bi-currency-rupee"></i></div>
+          <div class="stat-value">₹{{ daily_sales }}</div>
+          <div class="stat-label">Today's Sales</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3 animate-in delay-3">
+        <div class="stat-card bg-monthly h-100">
+          <div class="stat-icon icon-monthly"><i class="bi bi-calendar-check-fill"></i></div>
+          <div class="stat-value">₹{{ monthly_sales }}</div>
+          <div class="stat-label">Monthly Sales</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+      <!-- Most Purchased Pie Chart -->
+      <div class="col-lg-6 animate-in">
+        <div class="content-card">
+          <h5 class="card-title text-dark"><i class="bi bi-pie-chart-fill text-primary"></i> Most Purchased Products</h5>
+          <div class="mt-4" style="position: relative; height: 320px;">
+            <canvas id="topProductsPie"></canvas>
+          </div>
+          <div class="mt-4">
+            <ul class="list-group list-group-flush border-top border-bottom">
+              {% for product in top_products %}
+              <li class="list-group-item d-flex justify-content-between align-items-center py-3 bg-transparent border-0 px-0">
+                <span class="fw-medium">{{ product.item_name }}</span>
+                <span class="badge rounded-pill bg-light text-dark border">{{ product.total_qty }} Sold</span>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Low Stock Pie Chart -->
+      <div class="col-lg-6 animate-in delay-1">
+        <div class="content-card">
+          <h5 class="card-title" style="color: #dc2626;"><i class="bi bi-exclamation-triangle-fill"></i> Low Stock Analysis</h5>
+          {% if low_stock_products|length > 0 %}
+          <div class="mt-4" style="position: relative; height: 320px;">
+            <canvas id="lowStockPie"></canvas>
+          </div>
+          <div class="mt-4">
+            <ul class="list-group list-group-flush border-top border-bottom">
+              {% for item in low_stock_products %}
+              <li class="list-group-item d-flex justify-content-between align-items-center py-3 bg-transparent border-0 px-0">
+                <div class="d-flex align-items-center gap-2">
+                  <img src="/static/uploads/{{ item.image or 'default.jpg' }}" style="width:28px;height:28px;border-radius:6px;object-fit:cover;border:1px solid #f1f5f9;" alt="">
+                  <span class="fw-medium">{{ item.product_name }}</span>
+                </div>
+                <span class="badge rounded-pill px-3 py-2" style="background-color: {{ '#fef2f2' if item.quantity > 0 else '#450a0a' }}; color: {{ '#ef4444' if item.quantity > 0 else 'white' }}; font-weight: 700;">
+                  {{ item.quantity }} {{ 'left' if item.quantity > 0 else 'OUT' }}
+                </span>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% else %}
+          <div class="text-center py-5">
+            <i class="bi bi-check-circle-fill text-success" style="font-size: 3.5rem;"></i>
+            <p class="mt-3 fw-semibold text-muted">All products are well-stocked!</p>
+            <p class="text-muted small">No products below threshold (≤ 5 units)</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Sales Table Section -->
+    <div class="row g-4">
+      <div class="col-12 animate-in">
+        <div class="content-card">
+          <h5 class="card-title text-dark"><i class="bi bi-table text-primary"></i> Product Performance Details</h5>
+          <div class="table-responsive mt-3">
+            <table class="table custom-table">
+              <thead>
+                <tr>
+                  <th>Product Name</th>
+                  <th>Quantity Sold</th>
+                  <th>Total Revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% if product_sales %}
+                {% for sale in product_sales %}
+                <tr>
+                  <td>
+                    <div class="fw-bold">{{ sale.item_name }}</div>
+                  </td>
+                  <td>
+                    <span class="badge bg-green-subtle text-success border border-success-subtle px-3 py-2 rounded-pill" style="background-color: #dcfce7;">
+                      {{ sale.total_qty }} units
+                    </span>
+                  </td>
+                  <td>
+                    <div class="fw-bold text-dark">₹{{ sale.total_revenue }}</div>
+                  </td>
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr>
+                  <td colspan="3" class="text-center py-5 text-muted">No sales data available.</td>
+                </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+
+      // ===== MOST PURCHASED PIE CHART =====
+      const topProductsData = [
+        {% for product in top_products %}
+        { name: "{{ product.item_name }}", value: {{ product.total_qty }} },
+        {% endfor %}
+      ];
+
+      if (topProductsData.length > 0) {
+        const ctx = document.getElementById('topProductsPie').getContext('2d');
+        new Chart(ctx, {
+          type: 'pie',
+          data: {
+            labels: topProductsData.map(d => d.name),
+            datasets: [{
+              data: topProductsData.map(d => d.value),
+              backgroundColor: [
+                'rgba(12, 131, 31, 0.8)',
+                'rgba(37, 99, 235, 0.8)',
+                'rgba(245, 158, 11, 0.8)',
+                'rgba(139, 92, 246, 0.8)',
+                'rgba(6, 182, 212, 0.8)'
+              ],
+              borderColor: '#ffffff',
+              borderWidth: 3,
+              hoverOffset: 20
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { padding: 20, usePointStyle: true, font: { family: 'Outfit', size: 13, weight: '500' } }
+              },
+              tooltip: {
+                backgroundColor: 'white', titleColor: '#1e293b', bodyColor: '#64748b',
+                cornerRadius: 12, padding: 15, displayColors: true,
+                borderColor: '#e2e8f0', borderWidth: 1
+              }
+            }
+          }
+        });
+      }
+
+      // ===== LOW STOCK PIE CHART =====
+      const lowStockData = [
+        {% for item in low_stock_products %}
+        { name: "{{ item.product_name }}", value: {{ item.quantity if item.quantity > 0 else 1 }}, actual: {{ item.quantity }} },
+        {% endfor %}
+      ];
+
+      const lowStockCanvas = document.getElementById('lowStockPie');
+      if (lowStockCanvas && lowStockData.length > 0) {
+        const ctx2 = lowStockCanvas.getContext('2d');
+        
+        // Color palette: darker red = lower stock
+        const dangerColors = [
+          'rgba(220, 38, 38, 0.85)',
+          'rgba(239, 68, 68, 0.85)',
+          'rgba(248, 113, 113, 0.85)',
+          'rgba(252, 165, 165, 0.85)',
+          'rgba(254, 202, 202, 0.85)',
+          'rgba(254, 226, 226, 0.85)',
+          'rgba(69, 10, 10, 0.9)',
+          'rgba(127, 29, 29, 0.85)',
+          'rgba(153, 27, 27, 0.85)',
+          'rgba(185, 28, 28, 0.85)'
+        ];
+
+        new Chart(ctx2, {
+          type: 'doughnut',
+          data: {
+            labels: lowStockData.map(d => d.name),
+            datasets: [{
+              data: lowStockData.map(d => d.value),
+              backgroundColor: lowStockData.map((_, i) => dangerColors[i % dangerColors.length]),
+              borderColor: '#ffffff',
+              borderWidth: 3,
+              hoverOffset: 15
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '55%',
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { padding: 16, usePointStyle: true, font: { family: 'Outfit', size: 12, weight: '500' } }
+              },
+              tooltip: {
+                backgroundColor: 'white', titleColor: '#1e293b', bodyColor: '#dc2626',
+                cornerRadius: 12, padding: 15, displayColors: true,
+                borderColor: '#fecaca', borderWidth: 1,
+                callbacks: {
+                  label: function(ctx) {
+                    const item = lowStockData[ctx.dataIndex];
+                    return item.actual === 0 ? ` ${item.name}: OUT OF STOCK` : ` ${item.name}: ${item.actual} units left`;
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>

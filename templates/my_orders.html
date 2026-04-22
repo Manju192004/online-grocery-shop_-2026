@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}My Orders & Feedbacks - Freshmart{% endblock %}
+
+{% block styles %}
+<style>
+  body {
+    background: #f1f5f9;
+  }
+
+  /* Premium Navbar Styling (Standardized) */
+  .admin-header {
+    background-color: #0c831f;
+    color: white;
+    padding: 0.75rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+  .header-logo {
+    display: flex; align-items: center; gap: 0.75rem;
+    font-weight: 700; font-size: 1.25rem; color: white; text-decoration: none;
+  }
+  .header-logo i { color: #ffc107; font-size: 1.5rem; }
+  .header-nav { display: flex; gap: 1.5rem; margin-left: 2rem; }
+  .header-nav a {
+    color: rgba(255,255,255,0.8); text-decoration: none;
+    font-size: 0.9rem; font-weight: 500; transition: color 0.2s;
+    padding: 0.5rem 0.25rem;
+  }
+  .header-nav a:hover, .header-nav a.active { 
+    color: white; 
+    border-bottom: 2px solid white;
+  }
+  .header-actions { display: flex; align-items: center; gap: 1.25rem; }
+  .notification-btn {
+    color: white; font-size: 1.25rem; position: relative; 
+    display: flex; align-items: center; gap: 0.5rem; text-decoration: none;
+    transition: transform 0.2s;
+  }
+  .notification-btn:hover { transform: scale(1.05); color: white; }
+  
+  .low-stock-alert {
+    background-color: #ef4444; color: white; font-size: 0.7rem; font-weight: 700;
+    padding: 0.15rem 0.6rem; border-radius: 50px; display: flex; align-items: center; gap: 0.3rem;
+    animation: alertPulse 2s infinite; box-shadow: 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  
+  @keyframes alertPulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  }
+
+  .logout-btn {
+    background-color: #ef4444; color: white; border: none;
+    padding: 0.4rem 1.25rem; border-radius: 6px; font-weight: 600;
+    font-size: 0.85rem; text-decoration: none; transition: background-color 0.2s;
+  }
+  .logout-btn:hover { background-color: #dc2626; color: white; }
+
+  .section-header {
+    border-left: 5px solid #0c831f;
+    padding-left: 15px;
+    margin-bottom: 25px;
+  }
+  .order-card {
+    border: none;
+    border-radius: 12px;
+    transition: 0.3s;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+  .order-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  }
+  .status-badge {
+    font-size: 0.75rem;
+    padding: 5px 12px;
+    border-radius: 20px;
+  }
+</style>
+{% endblock %}
+
+{% block navbar %}
+{% if session.get('role') == 'Admin' %}
+<!-- Admin Navbar (Standardized) -->
+<header class="admin-header">
+  <div class="d-flex align-items-center">
+    <a href="/" class="header-logo">
+      <i class="bi bi-shop"></i>
+      <span>FRESHMART ADMIN</span>
+    </a>
+    <nav class="header-nav">
+      <a href="/viewproduct">Dashboard</a>
+      <a href="/category">Categories</a>
+      <a href="/add_product_page">Products</a>
+      <a href="/my_orders" class="active">Orders</a>
+      <a href="/transactions">Financials</a>
+      <a href="/stockin_page">Stock In</a>
+      <a href="/reports">Reports</a>
+    </nav>
+  </div>
+  <div class="header-actions">
+    {% if low_stock_count > 0 %}
+    <a href="/stockin_page" class="notification-btn" title="Low Stock Alerts">
+      <i class="bi bi-bell-fill text-warning"></i>
+      <div class="low-stock-alert">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span>{{ low_stock_count }} Low</span>
+      </div>
+    </a>
+    {% else %}
+    <div class="notification-btn opacity-50" title="No Stock Alerts">
+      <i class="bi bi-bell"></i>
+    </div>
+    {% endif %}
+    <a href="/logout" class="logout-btn">Logout</a>
+  </div>
+</header>
+{% else %}
+{{ super() }}
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+
+  <div class="mb-5">
+    <div class="section-header">
+      <h3 class="fw-bold">{% if session.get('role') == 'Admin' %}Customer Orders{% else %}My Recent Orders{% endif %}</h3>
+      <p class="text-muted small">Track your purchase history here</p>
+    </div>
+
+    <div class="table-responsive">
+      <table
+        class="table table-white align-middle bg-white rounded-3 shadow-sm"
+      >
+        <thead class="table-light">
+          <tr>
+            <th class="ps-3">Order Details</th>
+            {% if session.get('role') == 'Admin' %}
+            <th>Customer</th>
+            {% endif %}
+            <th>Quantity</th>
+            <th>Total Price</th>
+            <th>Tracking</th>
+            <th>Date</th>
+            <th class="text-center">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if orders %} {% for order in orders %}
+          <tr class="order-row-item">
+            <td class="ps-3 py-3">
+              <div class="fw-bold text-dark">{{ order.item_name }}</div>
+              <small class="text-muted text-uppercase">ID: #{{ order.order_id }}</small>
+            </td>
+            {% if session.get('role') == 'Admin' %}
+            <td>
+              <div class="fw-bold">{{ order.customer_name or 'Unknown' }}</div>
+              <div class="small text-muted">{{ order.customer_phone or 'No Phone' }}</div>
+            </td>
+            {% endif %}
+            <td>
+              <span class="badge bg-light text-dark border">{{ order.qty }} units</span>
+            </td>
+            <td class="fw-bold text-success">₹{{ order.total_price }}</td>
+            <td>
+              {% if session.get('role') == 'Admin' %}
+              <form action="/update_order_trace/{{ order.id }}" method="POST" class="d-inline">
+                <select name="trace" onchange="this.form.submit()" class="form-select form-select-sm" style="font-size: 0.75rem; width: auto;">
+                  <option value="Order Placed" {% if order.order_trace == 'Order Placed' %}selected{% endif %}>Placed</option>
+                  <option value="Packed" {% if order.order_trace == 'Packed' %}selected{% endif %}>Packed</option>
+                  <option value="Shipped" {% if order.order_trace == 'Shipped' %}selected{% endif %}>Shipped</option>
+                  <option value="Out for Delivery" {% if order.order_trace == 'Out for Delivery' %}selected{% endif %}>Out for Delivery</option>
+                  <option value="Delivered" {% if order.order_trace == 'Delivered' %}selected{% endif %}>Delivered</option>
+                </select>
+              </form>
+              {% else %}
+              <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle tracking-badge-{{ order.id }}" style="font-size: 0.75rem;">
+                {{ order.order_trace or 'Order Placed' }}
+              </span>
+              {% endif %}
+            </td>
+            <td class="small text-muted">{{ order.order_date }}</td>
+            <td class="text-center">
+              <div class="d-flex flex-column align-items-center gap-1">
+                {% if order.status == 'Pending' %}
+                <span class="badge bg-warning text-dark status-badge">
+                  <i class="bi bi-clock me-1"></i> Pending
+                </span>
+                {% if session.get('role') == 'Admin' %}
+                <form action="/update_order_status/{{ order.id }}" method="POST" class="d-inline">
+                  <input type="hidden" name="status" value="Delivered">
+                  <button type="submit" class="btn btn-sm btn-success py-0 mt-1" style="font-size: 0.7rem;">
+                    Mark Delivered
+                  </button>
+                </form>
+                {% endif %}
+                {% else %}
+                <span class="badge bg-success status-badge">
+                  <i class="bi bi-check2-circle me-1"></i> Delivered
+                </span>
+                {% endif %}
+                <a href="/order_details/{{ order.id }}" class="btn btn-sm btn-outline-primary py-0" style="font-size: 0.7rem;">
+                  Details
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %} {% else %}
+          <tr>
+            <td colspan="5" class="text-center py-5">
+              <i class="bi bi-bag-x text-muted display-4"></i>
+              <p class="mt-3 text-muted">
+                No orders found. Start shopping!
+              </p>
+            </td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="mt-5">
+    <div class="section-header">
+      <h3 class="fw-bold text-dark">My Feedbacks</h3>
+      <p class="text-muted small">Review your previous feedback</p>
+    </div>
+
+    <div class="row g-4">
+      {% if feedbacks %} {% for fb in feedbacks %}
+      <div class="col-md-6">
+        <div class="card order-card p-4 h-100">
+          <div
+            class="d-flex justify-content-between align-items-center mb-2"
+          >
+            <span class="badge bg-warning text-dark"
+              >{{ fb.rating }} ⭐ Rating</span
+            >
+            <small class="text-muted">User ID: {{ fb.user_id }}</small>
+          </div>
+          <p class="text-secondary italic mb-0">"{{ fb.description }}"</p>
+        </div>
+      </div>
+      {% endfor %} {% else %}
+      <div class="col-12">
+        <div class="alert alert-light text-center border py-4">
+          No feedback shared yet.
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.addEventListener('orderUpdate', function(e) {
+        const order = e.detail;
+        const badge = document.querySelector(`.tracking-badge-${order.id}`);
+        if (badge) {
+            badge.innerText = order.order_trace;
+        }
+        
+        // Also update the status cell if it's delivered
+        if (order.status === 'Delivered') {
+            const row = badge ? badge.closest('tr') : null;
+            if (row) {
+                const statusBadge = row.querySelector('.status-badge');
+                if (statusBadge) {
+                    statusBadge.className = 'badge bg-success status-badge';
+                    statusBadge.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Delivered';
+                }
+                // Remove mark delivered button if admin
+                const markDeliveredForm = row.querySelector('form[action*="/update_order_status"]');
+                if (markDeliveredForm) markDeliveredForm.remove();
+            }
+        }
+    });
+</script>
+{% endblock %}

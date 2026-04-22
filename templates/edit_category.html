@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Edit Category | Admin Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        background: #f1f5f9;
+        margin: 0;
+        min-height: 100vh;
+      }
+      /* Admin Header Styling (Standardized) */
+      .admin-header {
+        background-color: #0c831f;
+        color: white;
+        padding: 0.75rem 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+      .header-logo {
+        display: flex; align-items: center; gap: 0.75rem;
+        font-weight: 700; font-size: 1.25rem; color: white; text-decoration: none;
+      }
+      .header-logo i { color: #ffc107; font-size: 1.5rem; }
+      .header-nav { display: flex; gap: 1.5rem; margin-left: 2rem; }
+      .header-nav a {
+        color: rgba(255,255,255,0.8); text-decoration: none;
+        font-size: 0.9rem; font-weight: 500; transition: color 0.2s;
+        padding: 0.5rem 0.25rem;
+      }
+      .header-nav a:hover, .header-nav a.active { 
+        color: white; 
+        border-bottom: 2px solid white;
+      }
+      .header-actions { display: flex; align-items: center; gap: 1.25rem; }
+      .notification-btn {
+        color: white; font-size: 1.25rem; position: relative; 
+        display: flex; align-items: center; gap: 0.5rem; text-decoration: none;
+        transition: transform 0.2s;
+      }
+      .notification-btn:hover { transform: scale(1.05); color: white; }
+      
+      .low-stock-alert {
+        background-color: #ef4444; color: white; font-size: 0.7rem; font-weight: 700;
+        padding: 0.15rem 0.6rem; border-radius: 50px; display: flex; align-items: center; gap: 0.3rem;
+        animation: alertPulse 2s infinite; box-shadow: 0 0 0 rgba(239, 68, 68, 0.4);
+      }
+      
+      @keyframes alertPulse {
+        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+      }
+
+      .logout-btn {
+        background-color: #ef4444; color: white; border: none;
+        padding: 0.4rem 1.25rem; border-radius: 6px; font-weight: 600;
+        font-size: 0.85rem; text-decoration: none; transition: background-color 0.2s;
+      }
+      .logout-btn:hover { background-color: #dc2626; color: white; }
+
+      .page-container { padding: 3rem 1rem; display: flex; justify-content: center; }
+      .edit-card {
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+        overflow: hidden;
+        width: 100%;
+        max-width: 600px;
+      }
+      .edit-card-header {
+        background: linear-gradient(135deg, #1a7a3e 0%, #27ae60 100%);
+        padding: 24px 32px;
+        color: #fff;
+        display: flex; align-items: center; gap: 1rem;
+      }
+      .edit-card-header h4 { margin: 0; font-weight: 700; font-size: 1.25rem; }
+      .edit-card-body { padding: 32px; }
+
+      .form-label { font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.9rem; }
+      .form-control {
+        border-radius: 8px; border: 1.5px solid #d1d5db;
+        padding: 12px; transition: border-color 0.2s;
+      }
+      .form-control:focus {
+        border-color: #27ae60;
+        box-shadow: 0 0 0 3px rgba(39,174,96,0.1);
+      }
+      .current-img {
+        width: 100px; height: 100px; object-fit: cover;
+        border-radius: 12px; border: 2px solid #e5e7eb;
+        margin-bottom: 10px;
+      }
+      .btn-update {
+        background: #27ae60; color: white; border: none;
+        padding: 12px 32px; border-radius: 8px; font-weight: 600;
+        width: 100%; transition: opacity 0.2s;
+      }
+      .btn-update:hover { opacity: 0.9; color: white; }
+      .btn-cancel {
+        color: #6b7280; text-decoration: none; font-weight: 500;
+        display: block; text-align: center; margin-top: 1rem;
+      }
+      .btn-cancel:hover { color: #111827; }
+    </style>
+  </head>
+  <body>
+    <header class="admin-header">
+      <div class="d-flex align-items-center">
+        <a href="/" class="header-logo">
+          <i class="bi bi-shop"></i>
+          <span>FRESHMART ADMIN</span>
+        </a>
+        <nav class="header-nav">
+          <a href="/viewproduct">Dashboard</a>
+          <a href="/category" class="active">Categories</a>
+          <a href="/add_product_page">Products</a>
+          <a href="/my_orders">Orders</a>
+          <a href="/transactions">Financials</a>
+          <a href="/stockin_page">Stock In</a>
+          <a href="/reports">Reports</a>
+        </nav>
+      </div>
+      <div class="header-actions">
+        {% if low_stock_count > 0 %}
+        <a href="/stockin_page" class="notification-btn" title="Low Stock Alerts">
+          <i class="bi bi-bell-fill text-warning"></i>
+          <div class="low-stock-alert">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <span>{{ low_stock_count }} Low</span>
+          </div>
+        </a>
+        {% else %}
+        <div class="notification-btn opacity-50" title="No Stock Alerts">
+          <i class="bi bi-bell"></i>
+        </div>
+        {% endif %}
+        <a href="/logout" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <div class="page-container">
+      <div class="edit-card">
+        <div class="edit-card-header">
+          <i class="bi bi-pencil-square fs-3"></i>
+          <h4>Edit Category</h4>
+        </div>
+        <div class="edit-card-body">
+          <form action="{{ url_for('update_category', id=category.id) }}" method="POST" enctype="multipart/form-data">
+            <div class="mb-4">
+              <label class="form-label">Category Name</label>
+              <input type="text" name="name" class="form-control" value="{{ category.name }}" required />
+            </div>
+            <div class="mb-4">
+              <label class="form-label">Description</label>
+              <textarea name="description" class="form-control" rows="3" required>{{ category.description }}</textarea>
+            </div>
+            <div class="mb-4">
+              <label class="form-label d-block">Current Image</label>
+              <img src="/static/uploads/{{ category.image }}" class="current-img" alt="{{ category.name }}" />
+              <label class="form-label d-block mt-2">Replace Image (Optional)</label>
+              <input type="file" name="image" class="form-control" />
+            </div>
+            <button type="submit" class="btn-update shadow-sm">Update Category</button>
+            <a href="/category" class="btn-cancel">Cancel and Go Back</a>
+          </form>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
