@@ -61,8 +61,8 @@ LOW_STOCK_THRESHOLD = 5
 def get_db_connection():
     return mysql.connector.connect(
         host="localhost",
-        user="root",
-        password="",
+        user="YOURDB",
+        password="YOURPASSWORD",
         database="homedb",
         port=3306,
     )
