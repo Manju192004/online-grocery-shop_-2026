@@ -1,574 +1,972 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 import os
 import mysql.connector
-from werkzeug.utils import secure_filename
 import pandas as pd
-from sklearn.linear_model import LinearRegression
 import numpy as np
-from datetime import datetime, timedelta
 import requests
-from twilio.rest import Client
+
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from sklearn.linear_model import LinearRegression
+from twilio.rest import Client
+from werkzeug.utils import secure_filename
+
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = "secret_key_123" 
+app.secret_key = "secret_key_123"
+
 
 @app.context_processor
 def inject_low_stock_info():
-    """Provides the count of low stock items to all templates for admin notifications."""
-    if 'role' in session and session['role'] == 'Admin':
+    if "role" in session and session["role"] == "Admin":
         try:
             conn = get_db_connection()
             cursor = conn.cursor(dictionary=True, buffered=True)
-            # Use the global LOW_STOCK_THRESHOLD
-            cursor.execute("SELECT COUNT(*) as count FROM product WHERE quantity <= %s", (5,))
+
+            cursor.execute(
+                "SELECT COUNT(*) AS count FROM product WHERE quantity <= %s",
+                (5,),
+            )
+
             res = cursor.fetchone()
+
             cursor.close()
             conn.close()
-            return {'low_stock_count': res['count'] if res else 0}
+
+            return {
+                "low_stock_count": res["count"] if res else 0
+            }
+
         except Exception:
-            return {'low_stock_count': 0}
-    return {'low_stock_count': 0}
+            return {
+                "low_stock_count": 0
+            }
+
+    return {
+        "low_stock_count": 0
+    }
+
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# --- SMS CONFIG (Twilio for Receipts) ---
-# Get your credentials from: https://www.twilio.com/console
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
-TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER") # Updated from screenshot
+TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
 
-# --- SMS CONFIG (Admin Alerts) ---
-# Using the same Twilio credentials for admin alerts now
-ADMIN_PHONE = "+919487184056" # User's provided number with +91 prefix
+ADMIN_PHONE = "+919487184056"
 LOW_STOCK_THRESHOLD = 5
 
-# Database Connection
+
 def get_db_connection():
-  
     return mysql.connector.connect(
         host="localhost",
         user="root",
-        password="root", 
+        password="root",
         database="homedb",
-        port=3306  # Port-ah 3307 nu maathi check pannunga
+        port=3306,
     )
-# --- SMS UTILITIES ---
+
+
 def send_alert_sms(message, mobile_number):
-    """Sends an alert SMS to the admin using Twilio."""
     try:
-        # Ensure number has +91 if missing
-        if not mobile_number.startswith('+'):
+        if not mobile_number.startswith("+"):
             mobile_number = "+91" + mobile_number
 
-        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        client = Client(
+            TWILIO_ACCOUNT_SID,
+            TWILIO_AUTH_TOKEN,
+        )
+
         sent = client.messages.create(
             body=message,
             from_=TWILIO_PHONE_NUMBER,
-            to=mobile_number
+            to=mobile_number,
         )
+
         print(f"DEBUG Twilio Admin Alert SID: {sent.sid}")
-        return {"status": "success", "message": "Admin alerted via Twilio"}
+
+        return {
+            "status": "success",
+            "message": "Admin alerted via Twilio",
+        }
+
     except Exception as e:
         print(f"Error sending Twilio Alert: {e}")
-        return {"status": "error", "message": str(e)}
 
-# --- AUTH ROUTES ---
-@app.route('/api/notify_admin_low_stock', methods=['POST', 'GET'])
+        return {
+            "status": "error",
+            "message": str(e),
+        }
+
+
+@app.route("/api/notify_admin_low_stock", methods=["POST", "GET"])
 def notify_admin_low_stock():
-    if 'user' not in session or session.get('role') != 'Admin':
-        return jsonify({"status": "error", "message": "Unauthorized"}), 401
-    
+
+    if "user" not in session or session.get("role") != "Admin":
+        return jsonify(
+            {
+                "status": "error",
+                "message": "Unauthorized",
+            }
+        ), 401
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True, buffered=True)
-        cursor.execute("SELECT product_name, quantity FROM product WHERE quantity <= %s", (LOW_STOCK_THRESHOLD,))
+
+        cursor.execute(
+            """
+            SELECT product_name, quantity
+            FROM product
+            WHERE quantity <= %s
+            """,
+            (LOW_STOCK_THRESHOLD,),
+        )
+
         low_stock_items = cursor.fetchall()
+
         cursor.close()
         conn.close()
 
         if not low_stock_items:
-            return jsonify({"status": "success", "message": "No low stock items to report."})
+            return jsonify(
+                {
+                    "status": "success",
+                    "message": "No low stock items to report.",
+                }
+            )
 
-        items_str = ", ".join([f"{item['product_name']} ({item['quantity']})" for item in low_stock_items])
-        alert_msg = f"Alert Admin! Low stock items: {items_str}. Please restock."
-        
-        result = send_alert_sms(alert_msg, ADMIN_PHONE)
-        return jsonify({"status": "success", "message": "Admin notified successfully!", "api_response": result})
+        items_str = ", ".join(
+            [
+                f"{item['product_name']} ({item['quantity']})"
+                for item in low_stock_items
+            ]
+        )
+
+        alert_msg = (
+            f"Alert Admin! Low stock items: {items_str}. "
+            f"Please restock."
+        )
+
+        result = send_alert_sms(
+            alert_msg,
+            ADMIN_PHONE,
+        )
+
+        return jsonify(
+            {
+                "status": "success",
+                "message": "Admin notified successfully!",
+                "api_response": result,
+            }
+        )
+
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify(
+            {
+                "status": "error",
+                "message": str(e),
+            }
+        ), 500
 
-@app.route('/')
-@app.route('/index')
+@app.route("/")
+@app.route("/index")
 def index():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True, buffered=True)
+
     cursor.execute("SELECT * FROM product")
     products = cursor.fetchall()
-    
-    # Get distinct suppliers for the brands section
+
     try:
-        cursor.execute("SELECT DISTINCT supplier_name FROM stock_in WHERE supplier_name IS NOT NULL AND supplier_name != ''")
+        cursor.execute(
+            """
+            SELECT DISTINCT supplier_name
+            FROM stock_in
+            WHERE supplier_name IS NOT NULL
+            AND supplier_name != ''
+            """
+        )
+
         suppliers_raw = cursor.fetchall()
-        suppliers = [s['supplier_name'] for s in suppliers_raw if s['supplier_name']]
+        suppliers = [
+            s["supplier_name"]
+            for s in suppliers_raw
+            if s["supplier_name"]
+        ]
+
     except Exception:
         suppliers = []
-        
-    # Fallback to premium brands if no suppliers are registered yet
+
     if not suppliers:
-        suppliers = ["India Gate", "Heritage", "Kellogg's", "Nestle", "Aashirvaad", "Amul", "Britannia", "Patanjali"]
+        suppliers = [
+            "India Gate",
+            "Heritage",
+            "Kellogg's",
+            "Nestle",
+            "Aashirvaad",
+            "Amul",
+            "Britannia",
+            "Patanjali",
+        ]
 
     cursor.close()
     conn.close()
-    return render_template('index.html', products=products, suppliers=suppliers)
 
-@app.route('/login', methods=['GET', 'POST'])
+    return render_template(
+        "index.html",
+        products=products,
+        suppliers=suppliers,
+    )
+
+
+@app.route("/login", methods=["GET", "POST"])
 def login_page():
-    if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True, buffered=True)
-        cursor.execute("SELECT * FROM content WHERE Email = %s AND Password = %s", (email, password))
+
+        cursor.execute(
+            """
+            SELECT *
+            FROM content
+            WHERE Email = %s
+            AND Password = %s
+            """,
+            (email, password),
+        )
+
         user = cursor.fetchone()
+
         cursor.close()
         conn.close()
 
         if user:
-            session['user'] = user['Email']
-            session['user_id'] = user['id']
-            session['role'] = user['Role'] if user['Role'] else 'User'
+            session["user"] = user["Email"]
+            session["user_id"] = user["id"]
+            session["role"] = user["Role"] if user["Role"] else "User"
+
             flash("Login Successful!", "success")
-            return redirect(url_for('viewproduct' if session['role'] == 'Admin' else 'index'))
-        else:
-            flash("Invalid Credentials!", "danger")
-            return redirect(url_for('login_page'))
-            
+
+            return redirect(
+                url_for(
+                    "viewproduct"
+                    if session["role"] == "Admin"
+                    else "index"
+                )
+            )
+
+        flash("Invalid Credentials!", "danger")
+        return redirect(url_for("login_page"))
+
     return render_template("login.html")
 
-@app.route('/register', methods=['GET', 'POST'])
+
+@app.route("/register", methods=["GET", "POST"])
 def register_logic():
-    if request.method == 'GET':
+    if request.method == "GET":
         return render_template("register.html")
-        
-    fname, lname = request.form.get('fname'), request.form.get('lname')
-    email, phone, password = request.form.get('email'), request.form.get('phone'), request.form.get('password')
+
+    fname = request.form.get("fname")
+    lname = request.form.get("lname")
+    email = request.form.get("email")
+    phone = request.form.get("phone")
+    password = request.form.get("password")
+
     full_name = f"{fname} {lname}"
-    role = 'Admin' if email == 'admin@gmail.com' else 'User'
+    role = "Admin" if email == "admin@gmail.com" else "User"
 
     conn = get_db_connection()
     cursor = conn.cursor(buffered=True)
+
     try:
-        cursor.execute("INSERT INTO content (Name, Email, Password, Phone, Role) VALUES (%s, %s, %s, %s, %s)", 
-                     (full_name, email, password, phone, role))
+        cursor.execute(
+            """
+            INSERT INTO content
+            (Name, Email, Password, Phone, Role)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (
+                full_name,
+                email,
+                password,
+                phone,
+                role,
+            ),
+        )
+
         conn.commit()
-        flash("Registration Successful! Please Login.", "success")
-        return redirect(url_for('login_page'))
+
+        flash(
+            "Registration Successful! Please Login!",
+            "success",
+        )
+
+        return redirect(url_for("login_page"))
+
     except Exception as e:
         flash(f"Error: {str(e)}", "danger")
-        return redirect(url_for('register_logic'))
+        return redirect(url_for("register_logic"))
+
     finally:
         cursor.close()
         conn.close()
 
-# --- CONTEXT PROCESSORS ---
+
 @app.context_processor
 def inject_categories():
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True, buffered=True)
+
         cursor.execute("SELECT * FROM category")
         categories = cursor.fetchall()
+
         cursor.close()
         conn.close()
+
         return dict(nav_categories=categories)
+
     except Exception as e:
         print(f"Error in context processor: {e}")
         return dict(nav_categories=[])
 
-# --- CATEGORY ROUTES ---
-@app.route('/category')
+
+@app.route("/category")
 def category_page():
-    if 'user' not in session or session.get('role') != 'Admin':
-        return redirect(url_for('login_page'))
+    if "user" not in session or session.get("role") != "Admin":
+        return redirect(url_for("login_page"))
+
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True, buffered=True)
+
     cursor.execute("SELECT * FROM category")
     categories = cursor.fetchall()
+
     cursor.close()
     conn.close()
-    return render_template("category.html", categories=categories)
 
-@app.route('/add_category', methods=['POST'])
+    return render_template(
+        "category.html",
+        categories=categories,
+    )
+
+
+@app.route("/add_category", methods=["POST"])
 def add_category():
-    if 'user' not in session or session.get('role') != 'Admin':
-        return redirect(url_for('login_page'))
-    
-    name = request.form.get('name')
-    description = request.form.get('description')
-    image = request.files.get('image')
+    if "user" not in session or session.get("role") != "Admin":
+        return redirect(url_for("login_page"))
 
-    filename = secure_filename(image.filename) if image else "default_cat.jpg"
+    name = request.form.get("name")
+    description = request.form.get("description")
+    image = request.files.get("image")
+
+    filename = (
+        secure_filename(image.filename)
+        if image
+        else "default_cat.jpg"
+    )
+
     if image:
-        upload_path = os.path.join(BASE_DIR, 'static/uploads')
-        if not os.path.exists(upload_path): os.makedirs(upload_path)
-        image.save(os.path.join(upload_path, filename))
+        upload_path = os.path.join(
+            BASE_DIR,
+            "static/uploads",
+        )
+
+        if not os.path.exists(upload_path):
+            os.makedirs(upload_path)
+
+        image.save(
+            os.path.join(
+                upload_path,
+                filename,
+            )
+        )
 
     conn = get_db_connection()
     cursor = conn.cursor(buffered=True)
-    cursor.execute("INSERT INTO category (name, description, image) VALUES (%s, %s, %s)", 
-                 (name, description, filename))
+
+    cursor.execute(
+        """
+        INSERT INTO category
+        (name, description, image)
+        VALUES (%s, %s, %s)
+        """,
+        (
+            name,
+            description,
+            filename,
+        ),
+    )
+
     conn.commit()
+
     cursor.close()
     conn.close()
-    flash("Category added successfully!", "success")
-    return redirect(url_for('category_page'))
+
+    flash(
+        "Category added successfully!",
+        "success",
+    )
+
+    return redirect(url_for("category_page"))
 
 @app.route('/edit_category/<int:id>')
 def edit_category(id):
     if 'user' not in session or session.get('role') != 'Admin':
         return redirect(url_for('login_page'))
+
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True, buffered=True)
+
     cursor.execute("SELECT * FROM category WHERE id = %s", (id,))
     category = cursor.fetchone()
+
     cursor.close()
     conn.close()
+
     if not category:
         flash("Category not found!", "danger")
         return redirect(url_for('category_page'))
+
     return render_template("edit_category.html", category=category)
+
 
 @app.route('/update_category/<int:id>', methods=['POST'])
 def update_category(id):
     if 'user' not in session or session.get('role') != 'Admin':
         return redirect(url_for('login_page'))
-    
+
     name = request.form.get('name')
     description = request.form.get('description')
     image = request.files.get('image')
 
     conn = get_db_connection()
     cursor = conn.cursor(buffered=True)
-    
-    if image and image.filename != '':
+
+    if image and image.filename:
         filename = secure_filename(image.filename)
-        upload_path = os.path.join(BASE_DIR, 'static/uploads')
-        if not os.path.exists(upload_path): os.makedirs(upload_path)
+
+        upload_path = os.path.join(BASE_DIR, "static/uploads")
+        os.makedirs(upload_path, exist_ok=True)
+
         image.save(os.path.join(upload_path, filename))
-        cursor.execute("UPDATE category SET name=%s, description=%s, image=%s WHERE id=%s", 
-                     (name, description, filename, id))
+
+        cursor.execute(
+            """
+            UPDATE category
+            SET name=%s, description=%s, image=%s
+            WHERE id=%s
+            """,
+            (name, description, filename, id)
+        )
     else:
-        cursor.execute("UPDATE category SET name=%s, description=%s WHERE id=%s", 
-                     (name, description, id))
-    
+        cursor.execute(
+            """
+            UPDATE category
+            SET name=%s, description=%s
+            WHERE id=%s
+            """,
+            (name, description, id)
+        )
+
     conn.commit()
     cursor.close()
     conn.close()
+
     flash("Category updated successfully!", "success")
     return redirect(url_for('category_page'))
+
 
 @app.route('/delete_category/<int:id>')
 def delete_category(id):
     if 'user' not in session or session.get('role') != 'Admin':
         return redirect(url_for('login_page'))
+
     conn = get_db_connection()
     cursor = conn.cursor(buffered=True)
+
     cursor.execute("DELETE FROM category WHERE id = %s", (id,))
+
     conn.commit()
     cursor.close()
     conn.close()
+
     flash("Category deleted successfully!", "success")
     return redirect(url_for('category_page'))
 
-# --- ADMIN ROUTES (Product Management) ---
+
 @app.route('/add_product_page')
 def add_product_page():
     if 'user' not in session or session.get('role') != 'Admin':
         return redirect(url_for('login_page'))
+
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True, buffered=True)
+
     cursor.execute("SELECT * FROM category")
     categories = cursor.fetchall()
+
     cursor.execute("SELECT * FROM product ORDER BY id DESC")
     products = cursor.fetchall()
+
     cursor.close()
     conn.close()
-    return render_template("addproducts.html", categories=categories, products=products)
+
+    return render_template(
+        "addproducts.html",
+        categories=categories,
+        products=products
+    )
+
 
 @app.route('/viewproduct')
 def viewproduct():
-    if 'user' not in session: return redirect(url_for('login_page'))
-    
+    if 'user' not in session:
+        return redirect(url_for('login_page'))
+
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True, buffered=True)
-    
-    # Existing fetching logic for products and feedbacks
+
     cursor.execute("SELECT * FROM product")
     products = cursor.fetchall()
-    
+
     sql_feedback = """
-        SELECT f.*, c.Name as user_name, p.product_name 
+        SELECT
+            f.*,
+            c.Name AS user_name,
+            p.product_name
         FROM feedback f
-        LEFT JOIN content c ON f.user_id = c.id
-        LEFT JOIN product p ON f.product_id = p.id
+        LEFT JOIN content c
+            ON f.user_id = c.id
+        LEFT JOIN product p
+            ON f.product_id = p.id
         ORDER BY f.id DESC
     """
     cursor.execute(sql_feedback)
     feedbacks = cursor.fetchall()
 
-    # Dashboard Metrics
-    cursor.execute("SELECT COUNT(*) as count FROM content")
+    cursor.execute("SELECT COUNT(*) AS count FROM content")
     total_users = cursor.fetchone()['count']
-    
+
     total_products_count = len(products)
-    
-    cursor.execute("SELECT COUNT(*) as count FROM orders")
+
+    cursor.execute("SELECT COUNT(*) AS count FROM orders")
     total_orders = cursor.fetchone()['count']
-    
-    cursor.execute("SELECT COUNT(*) as count FROM orders WHERE status = 'Pending'")
+
+    cursor.execute("SELECT COUNT(*) AS count FROM orders WHERE status = 'Pending'")
     pending_orders = cursor.fetchone()['count']
 
-    # Total Categories
-    cursor.execute("SELECT COUNT(*) as count FROM category")
+    cursor.execute("SELECT COUNT(*) AS count FROM category")
     total_categories = cursor.fetchone()['count']
 
-    # Total Suppliers (distinct from stock_in table)
     try:
-        cursor.execute("SELECT COUNT(DISTINCT supplier_name) as count FROM stock_in WHERE supplier_name IS NOT NULL AND supplier_name != ''")
+        cursor.execute("""
+            SELECT COUNT(DISTINCT supplier_name) AS count
+            FROM stock_in
+            WHERE supplier_name IS NOT NULL
+            AND supplier_name != ''
+        """)
         total_suppliers = cursor.fetchone()['count']
     except Exception:
         total_suppliers = 0
 
-    # Low Stock Count
-    cursor.execute("SELECT COUNT(*) as count FROM product WHERE quantity <= %s", (LOW_STOCK_THRESHOLD,))
+    cursor.execute(
+        "SELECT COUNT(*) AS count FROM product WHERE quantity <= %s",
+        (LOW_STOCK_THRESHOLD,)
+    )
     low_stock_count_val = cursor.fetchone()['count']
-    
-    # Recent Orders with Customer Names
+
     sql_recent_orders = """
-        SELECT o.*, c.Name as customer_name, c.Email as customer_email
+        SELECT
+            o.*,
+            c.Name AS customer_name,
+            c.Email AS customer_email
         FROM orders o
-        JOIN content c ON o.user_id = c.id
+        JOIN content c
+            ON o.user_id = c.id
         ORDER BY o.order_date DESC
         LIMIT 5
     """
     cursor.execute(sql_recent_orders)
     recent_orders = cursor.fetchall()
 
-    # Low Stock Alert Notification - using the consistent threshold
-    cursor.execute("SELECT * FROM product WHERE quantity <= %s", (LOW_STOCK_THRESHOLD,))
+    cursor.execute(
+        "SELECT * FROM product WHERE quantity <= %s",
+        (LOW_STOCK_THRESHOLD,)
+    )
     low_stock_alerts = cursor.fetchall()
-    
+
     cursor.close()
     conn.close()
-    
-    return render_template("viewproduct.html", 
-                         products=products, 
-                         feedbacks=feedbacks, 
-                         low_stock_alerts=low_stock_alerts,
-                         total_users=total_users,
-                         total_products=total_products_count,
-                         total_orders=total_orders,
-                         pending_orders=pending_orders,
-                         total_categories=total_categories,
-                         total_suppliers=total_suppliers,
-                         low_stock_count_val=low_stock_count_val,
-                         recent_orders=recent_orders)
+
+    return render_template(
+        "viewproduct.html",
+        products=products,
+        feedbacks=feedbacks,
+        low_stock_alerts=low_stock_alerts,
+        total_users=total_users,
+        total_products=total_products_count,
+        total_orders=total_orders,
+        pending_orders=pending_orders,
+        total_categories=total_categories,
+        total_suppliers=total_suppliers,
+        low_stock_count_val=low_stock_count_val,
+        recent_orders=recent_orders
+    )
+
 
 @app.route('/stockin_page')
 def stockin_page():
     if 'user' not in session or session.get('role') != 'Admin':
         return redirect(url_for('login_page'))
+
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True, buffered=True)
+
     cursor.execute("SELECT id, product_name FROM product")
     products = cursor.fetchall()
+
     cursor.close()
     conn.close()
+
     return render_template("stockin.html", products=products)
+
 
 @app.route('/save_stockin', methods=['POST'])
 def save_stockin():
     if 'user' not in session or session.get('role') != 'Admin':
         return redirect(url_for('login_page'))
-    
+
     product_id = request.form.get('product_id')
     supplier_name = request.form.get('supplier_name')
     supplier_address = request.form.get('supplier_address')
     quantity = int(request.form.get('quantity'))
     price = float(request.form.get('price'))
+
     total_amount = quantity * price
 
     conn = get_db_connection()
     cursor = conn.cursor(buffered=True)
+
     try:
-        # 1. Insert into stock_in table
-        cursor.execute("""
-            INSERT INTO stock_in (product_id, supplier_name, supplier_address, quantity, price, total_amount, date_added) 
+        cursor.execute(
+            """
+            INSERT INTO stock_in
+            (
+                product_id,
+                supplier_name,
+                supplier_address,
+                quantity,
+                price,
+                total_amount,
+                date_added
+            )
             VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (product_id, supplier_name, supplier_address, quantity, price, total_amount, datetime.now()))
+            """,
+            (
+                product_id,
+                supplier_name,
+                supplier_address,
+                quantity,
+                price,
+                total_amount,
+                datetime.now()
+            )
+        )
         
-        # 2. Update product quantity
-        cursor.execute("UPDATE product SET quantity = quantity + %s WHERE id = %s", (quantity, product_id))
-        
+               cursor.execute(
+            "UPDATE product SET quantity = quantity + %s WHERE id = %s",
+            (quantity, product_id)
+        )
+
         conn.commit()
         flash("Stock updated successfully!", "success")
-    except Exception as e:
+
+    except Exception:
         conn.rollback()
-        # If date_added doesn't exist, try without it
+
         try:
-            cursor.execute("""
-                INSERT INTO stock_in (product_id, supplier_name, supplier_address, quantity, price, total_amount) 
+            cursor.execute(
+                """
+                INSERT INTO stock_in
+                (
+                    product_id,
+                    supplier_name,
+                    supplier_address,
+                    quantity,
+                    price,
+                    total_amount
+                )
                 VALUES (%s, %s, %s, %s, %s, %s)
-            """, (product_id, supplier_name, supplier_address, quantity, price, total_amount))
-            cursor.execute("UPDATE product SET quantity = quantity + %s WHERE id = %s", (quantity, product_id))
+                """,
+                (
+                    product_id,
+                    supplier_name,
+                    supplier_address,
+                    quantity,
+                    price,
+                    total_amount
+                )
+            )
+
+            cursor.execute(
+                "UPDATE product SET quantity = quantity + %s WHERE id = %s",
+                (quantity, product_id)
+            )
+
             conn.commit()
             flash("Stock updated successfully!", "success")
+
         except Exception as inner_e:
             flash(f"Error updating stock: {str(inner_e)}", "danger")
+
     finally:
         cursor.close()
         conn.close()
-    
+
     return redirect(url_for('viewproduct'))
+
 
 @app.route('/api/product/<int:id>')
 def api_product_detail(id):
     if 'user' not in session:
         return jsonify({"error": "Unauthorized"}), 401
-    
+
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True, buffered=True)
+
     cursor.execute("SELECT * FROM product WHERE id = %s", (id,))
     product = cursor.fetchone()
+
     cursor.close()
     conn.close()
-    
+
     if product:
         return jsonify(product)
+
     return jsonify({"error": "Product not found"}), 404
+
 
 @app.route('/api/low_stock_products')
 def api_low_stock_products():
-    """Returns list of low stock products for notification dropdown."""
     if 'role' not in session or session['role'] != 'Admin':
         return jsonify({"error": "Admin access required"}), 403
-    
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True, buffered=True)
-        cursor.execute("""
-            SELECT id, product_name, quantity, category, image, restock_level 
-            FROM product 
-            WHERE quantity <= %s 
+
+        cursor.execute(
+            """
+            SELECT
+                id,
+                product_name,
+                quantity,
+                category,
+                image,
+                restock_level
+            FROM product
+            WHERE quantity <= %s
             ORDER BY quantity ASC
-        """, (LOW_STOCK_THRESHOLD,))
+            """,
+            (LOW_STOCK_THRESHOLD,)
+        )
+
         products = cursor.fetchall()
+
         cursor.close()
         conn.close()
+
         return jsonify(products)
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/api/recent_stockin')
 def api_recent_stockin():
     if 'role' not in session or session['role'] != 'Admin':
         return jsonify({"error": "Admin access required"}), 403
-    
+
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True, buffered=True)
-    # Using ORDER BY id DESC as a fallback if date_added doesn't exist
+
     try:
-        cursor.execute("""
-            SELECT s.*, p.product_name 
-            FROM stock_in s 
-            JOIN product p ON s.product_id = p.id 
-            ORDER BY s.id DESC LIMIT 10
-        """)
-    except:
-        cursor.execute("SELECT * FROM stock_in ORDER BY id DESC LIMIT 10")
-        
+        cursor.execute(
+            """
+            SELECT
+                s.*,
+                p.product_name
+            FROM stock_in s
+            JOIN product p
+                ON s.product_id = p.id
+            ORDER BY s.id DESC
+            LIMIT 10
+            """
+        )
+
+    except Exception:
+        cursor.execute(
+            "SELECT * FROM stock_in ORDER BY id DESC LIMIT 10"
+        )
+
     stocks = cursor.fetchall()
+
     cursor.close()
     conn.close()
-    
+
     return jsonify(stocks)
+
 
 @app.route('/save_product', methods=['POST'])
 def save_product():
-    product_name, category = request.form.get('product_name'), request.form.get('category')
-    price, quantity = request.form.get('price'), request.form.get('quantity')
+    product_name = request.form.get('product_name')
+    category = request.form.get('category')
+    price = request.form.get('price')
+    quantity = request.form.get('quantity')
+
     original_price = request.form.get('original_price')
     original_price = original_price if original_price else None
+
     restock_level = request.form.get('restock_level', 10)
     unit = request.form.get('unit', '1 Kg')
     description = request.form.get('description', '')
     image = request.files['image']
 
     filename = secure_filename(image.filename) if image else "default.jpg"
+
     if image:
-        upload_path = os.path.join(BASE_DIR, 'static/uploads')
-        if not os.path.exists(upload_path): os.makedirs(upload_path)
+        upload_path = os.path.join(BASE_DIR, "static/uploads")
+        os.makedirs(upload_path, exist_ok=True)
+
         image.save(os.path.join(upload_path, filename))
 
     conn = get_db_connection()
     cursor = conn.cursor(buffered=True)
+
     cursor.execute(
-        "INSERT INTO product (product_name, category, price, quantity, restock_level, image, original_price, unit, description) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
-        (product_name, category, price, quantity, restock_level, filename, original_price, unit, description)
+        """
+        INSERT INTO product
+        (
+            product_name,
+            category,
+            price,
+            quantity,
+            restock_level,
+            image,
+            original_price,
+            unit,
+            description
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        (
+            product_name,
+            category,
+            price,
+            quantity,
+            restock_level,
+            filename,
+            original_price,
+            unit,
+            description
+        )
     )
+
     conn.commit()
+
     cursor.close()
     conn.close()
+
     flash(f"Product '{product_name}' added successfully!", "success")
+
     return redirect(url_for('add_product_page'))
+
 
 @app.route('/inline_update_product', methods=['POST'])
 def inline_update_product():
     if 'user' not in session or session.get('role') != 'Admin':
-        return jsonify({"status": "error", "message": "Unauthorized"}), 401
+        return jsonify(
+            {
+                "status": "error",
+                "message": "Unauthorized"
+            }
+        ), 401
+
     data = request.get_json()
+
     pid = data.get('id')
     quantity = data.get('quantity')
     restock_level = data.get('restock_level')
+
     try:
         conn = get_db_connection()
         cursor = conn.cursor(buffered=True)
+
         cursor.execute(
-            "UPDATE product SET quantity=%s, restock_level=%s WHERE id=%s",
+            """
+            UPDATE product
+            SET quantity = %s,
+                restock_level = %s
+            WHERE id = %s
+            """,
             (quantity, restock_level, pid)
         )
+
         conn.commit()
-        
-        # --- LOW STOCK ALERT CHECK ---
+
         if int(quantity) <= LOW_STOCK_THRESHOLD:
             try:
-                cursor.execute("SELECT product_name FROM product WHERE id=%s", (pid,))
-                p_name = cursor.fetchone()[0]
-                alert_msg = f"Alert Admin! {p_name} stock manually updated and is low. Only {quantity} units left."
-                send_alert_sms(alert_msg, ADMIN_PHONE)
-            except: pass
+                cursor.execute(
+                    "SELECT product_name FROM product WHERE id = %s",
+                    (pid,)
+                )
 
-        cursor.close()
+                p_name = cursor.fetchone()[0]
+
+                alert_msg = (
+                    f"Alert Admin! {p_name} stock manually updated "
+                    f"and is low. Only {quantity} units left."
+                )
+
+                send_alert_sms(alert_msg, ADMIN_PHONE)
+
+            except Exception:
+                pass
+
+                cursor.close()
         conn.close()
+
         return jsonify({"status": "success"})
+
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify(
+            {
+                "status": "error",
+                "message": str(e)
+            }
+        ), 500
+
 
 @app.route('/update_product', methods=['POST'])
 def update_product():
     if 'user' not in session or session.get('role') != 'Admin':
         return redirect(url_for('login_page'))
-    
+
     pid = request.form.get('id')
     product_name = request.form.get('product_name')
     category = request.form.get('category')
     price = request.form.get('price')
     quantity = request.form.get('quantity')
+
     original_price = request.form.get('original_price')
     original_price = original_price if original_price else None
+
     unit = request.form.get('unit', '1 Kg')
     description = request.form.get('description', '')
     image = request.files.get('image')
@@ -576,29 +974,84 @@ def update_product():
     conn = get_db_connection()
     cursor = conn.cursor(buffered=True)
 
-    if image and image.filename != '':
+    if image and image.filename:
         filename = secure_filename(image.filename)
-        upload_path = os.path.join(BASE_DIR, 'static/uploads')
-        if not os.path.exists(upload_path): os.makedirs(upload_path)
+
+        upload_path = os.path.join(BASE_DIR, "static/uploads")
+        os.makedirs(upload_path, exist_ok=True)
+
         image.save(os.path.join(upload_path, filename))
-        cursor.execute("UPDATE product SET product_name=%s, category=%s, price=%s, quantity=%s, image=%s, original_price=%s, unit=%s, description=%s WHERE id=%s",
-                     (product_name, category, price, quantity, filename, original_price, unit, description, pid))
+
+        cursor.execute(
+            """
+            UPDATE product
+            SET
+                product_name = %s,
+                category = %s,
+                price = %s,
+                quantity = %s,
+                image = %s,
+                original_price = %s,
+                unit = %s,
+                description = %s
+            WHERE id = %s
+            """,
+            (
+                product_name,
+                category,
+                price,
+                quantity,
+                filename,
+                original_price,
+                unit,
+                description,
+                pid
+            )
+        )
+
     else:
-        cursor.execute("UPDATE product SET product_name=%s, category=%s, price=%s, quantity=%s, original_price=%s, unit=%s, description=%s WHERE id=%s",
-                     (product_name, category, price, quantity, original_price, unit, description, pid))
+        cursor.execute(
+            """
+            UPDATE product
+            SET
+                product_name = %s,
+                category = %s,
+                price = %s,
+                quantity = %s,
+                original_price = %s,
+                unit = %s,
+                description = %s
+            WHERE id = %s
+            """,
+            (
+                product_name,
+                category,
+                price,
+                quantity,
+                original_price,
+                unit,
+                description,
+                pid
+            )
+        )
 
     conn.commit()
 
-    # --- LOW STOCK ALERT CHECK ---
     try:
         if int(quantity) <= LOW_STOCK_THRESHOLD:
-            # product_name is already available in this route
-            alert_msg = f"Alert Admin! {product_name} stock updated and is low. Only {quantity} units left."
+            alert_msg = (
+                f"Alert Admin! {product_name} stock updated and "
+                f"is low. Only {quantity} units left."
+            )
+
             send_alert_sms(alert_msg, ADMIN_PHONE)
-    except: pass
+
+    except Exception:
+        pass
 
     cursor.close()
     conn.close()
+
     return redirect(url_for('viewproduct'))
 
 
@@ -606,8 +1059,14 @@ def update_product():
 def edit_page(id):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True, buffered=True)
-    cursor.execute("SELECT * FROM product WHERE id = %s", (id,))
+
+    cursor.execute(
+        "SELECT * FROM product WHERE id = %s",
+        (id,)
+    )
+
     product = cursor.fetchone()
+
     cursor.close()
     conn.close()
     return render_template("editproduct.html", product=product)
