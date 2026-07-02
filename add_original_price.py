@@ -4,7 +4,7 @@ try:
     conn = mysql.connector.connect(
         host="localhost",
         user="root",
-        password="", # using empty password as in app.py
+        password="", 
         database="homedb"
     )
     cursor = conn.cursor()
